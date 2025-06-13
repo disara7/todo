@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -39,7 +40,7 @@ func init() {
 	cfg.Passwd = "password@1234"
 	cfg.DBName = "todo"
 	cfg.Net = "tcp"
-	cfg.Addr = "127.0.0.1:55000"
+	cfg.Addr = "host.docker.internal:55000"
 
 	var err error
 	db, err = sql.Open("mysql", cfg.FormatDSN())
@@ -52,7 +53,7 @@ func init() {
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	tmpl, err := template.ParseFiles("static/home.tpl")
+	tmpl, err := template.ParseFiles(filepath.Join("static", "home.tpl"))
 	if err != nil {
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
