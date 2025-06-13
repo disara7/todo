@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 	"github.com/thedevsaddam/renderer"
 )
 
@@ -32,21 +33,25 @@ type todo struct {
 }
 
 func init() {
+	// Load .env file (ignore error if you want)
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found or error loading it, using environment variables")
+	}
+
 	rnd = renderer.New()
 
-	// MySQL config
 	cfg := mysql.NewConfig()
-	cfg.User = "root"
-	cfg.Passwd = "password@1234"
-	cfg.DBName = "todo"
+	cfg.User = os.Getenv("DB_USER")
+	cfg.Passwd = os.Getenv("DB_PASS")
+	cfg.DBName = os.Getenv("DB_NAME")
 	cfg.Net = "tcp"
-	cfg.Addr = "host.docker.internal:55000"
+	cfg.Addr = os.Getenv("DB_ADDR")
 
-	var err error
-	db, err = sql.Open("mysql", cfg.FormatDSN())
-	checkErr(err)
+	var err2 error
+	db, err2 = sql.Open("mysql", cfg.FormatDSN())
+	checkErr(err2)
 
-	// Validate connection
 	checkErr(db.Ping())
 }
 
