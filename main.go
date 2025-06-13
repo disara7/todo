@@ -21,9 +21,7 @@ import (
 var rnd *renderer.Render
 var db *sql.DB
 
-const (
-	port = ":19000"
-)
+const port = ":19000"
 
 type todo struct {
 	ID        int       `json:"id"`
@@ -44,7 +42,7 @@ func init() {
 	cfg.Addr = "127.0.0.1:55000"
 
 	var err error
-	db, err = sql.Open("mysql", cfg.FormatDSN()) // connect to MySQL
+	db, err = sql.Open("mysql", cfg.FormatDSN())
 	checkErr(err)
 
 	// Validate connection
@@ -70,7 +68,7 @@ func fetchTodos(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		rnd.JSON(w, http.StatusProcessing, renderer.M{
 			"message": "Failed to fetch todos",
-			"error":   err,
+			"error":   err.Error(),
 		})
 		return
 	}
@@ -81,23 +79,39 @@ func fetchTodos(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var t todo
 		var completedInt int
-		if err := rows.Scan(&t.ID, &t.Title, &completedInt, &t.CreatedAt); err != nil {
+		var createdAtStr []uint8
+
+		if err := rows.Scan(&t.ID, &t.Title, &completedInt, &createdAtStr); err != nil {
 			rnd.JSON(w, http.StatusProcessing, renderer.M{
 				"message": "Error scanning row",
-				"error":   err,
+				"error":   err.Error(),
 			})
 			return
 		}
+
 		t.Completed = completedInt == 1
+
+		parsedTime, err := time.Parse("2006-01-02 15:04:05", string(createdAtStr))
+		if err != nil {
+			rnd.JSON(w, http.StatusProcessing, renderer.M{
+				"message": "Error parsing datetime",
+				"error":   err.Error(),
+			})
+			return
+		}
+
+		t.CreatedAt = parsedTime
 		todoList = append(todoList, t)
 	}
+
 	if err := rows.Err(); err != nil {
 		rnd.JSON(w, http.StatusProcessing, renderer.M{
 			"message": "Error retrieving rows",
-			"error":   err,
+			"error":   err.Error(),
 		})
 		return
 	}
+
 	rnd.JSON(w, http.StatusOK, renderer.M{
 		"data": todoList,
 	})
@@ -121,7 +135,7 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 	t.CreatedAt = time.Now()
 	t.Completed = false
 
-	res, err := db.Exec("INSERT INTO todos (title, completed, created_at) VALUES (?, ?, ?)", t.Title, t.Completed, t.CreatedAt)
+	_, err := db.Exec("INSERT INTO todos (title, completed, created_at) VALUES (?, ?, ?)", t.Title, 0, t.CreatedAt)
 	if err != nil {
 		rnd.JSON(w, http.StatusProcessing, renderer.M{
 			"message": "Failed to insert todo",
@@ -130,12 +144,8 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := res.LastInsertId()
-	checkErr(err)
-
 	rnd.JSON(w, http.StatusCreated, renderer.M{
 		"message": "Todo created successfully",
-		"todo_id": id,
 	})
 }
 
@@ -155,7 +165,12 @@ func updateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := db.Exec("UPDATE todos SET title = ?, completed = ? WHERE id = ?", t.Title, t.Completed, id)
+	completedInt := 0
+	if t.Completed {
+		completedInt = 1
+	}
+
+	_, err := db.Exec("UPDATE todos SET title = ?, completed = ? WHERE id = ?", t.Title, completedInt, id)
 	if err != nil {
 		rnd.JSON(w, http.StatusProcessing, renderer.M{
 			"message": "Failed to update todo",
