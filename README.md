@@ -27,8 +27,12 @@ A simple Todo application built with Go, MySQL, and Chi router. This app allows 
 
 You can pull the pre-built Docker image from Docker Hub and run it directly: (https://hub.docker.com/r/disara/todo)
 
-[to run locally with MySQL local without go installed: docker run --rm -p 19000:19000 --env-file .env --add-host=host.docker.internal:host-gateway disara/todo:latest]
-
 ```bash
 docker pull disara/todo:latest
 docker run -p 19000:19000 --add-host=host.docker.internal:host-gateway disara/todo:latest
+```
+
+to run locally with MySQL local without go installed:
+```
+docker run --rm -p 19000:19000 --env-file .env --add-host=host.docker.internal:host-gateway disara/todo:latest
+```
